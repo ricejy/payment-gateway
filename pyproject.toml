@@ -1,0 +1,13 @@
+[project]
+name = "payment-gateway"
+version = "0.1.0"
+description = "This is a payment gateway demo that simulates how AI agents can buy and sell services from each other using two protocols: AP2 and x402"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "google-adk>=1.33.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.13.4",
+    "starlette>=0.52.1",
+    "uvicorn>=0.46.0",
+]

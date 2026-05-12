@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Gateway — Live Protocol Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e1e4ed;
+    --muted: #8b8fa3;
+    --ap2: #6b8aff;
+    --ap2-bg: rgba(107,138,255,0.12);
+    --x402: #34d399;
+    --x402-bg: rgba(52,211,153,0.12);
+    --wallet: #a78bfa;
+    --wallet-bg: rgba(167,139,250,0.12);
+    --discovery: #94a3b8;
+    --discovery-bg: rgba(148,163,184,0.12);
+    --error: #f87171;
+    --col1: 16.667%;
+    --col2: 50%;
+    --col3: 83.333%;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    height: 56px;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  header h1 span { color: var(--muted); font-weight: 400; }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--error);
+    transition: background 0.3s;
+  }
+
+  .status-dot.connected { background: var(--x402); }
+
+  .clear-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    transition: all 0.15s;
+  }
+
+  .clear-btn:hover { background: var(--border); color: var(--text); }
+
+  /* ── Main Layout ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    height: calc(100vh - 56px);
+  }
+
+  /* ── Sequence Panel ── */
+  .sequence-panel {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sequence-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+
+  .col-label {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  .col-label.client { color: var(--ap2); }
+  .col-label.server { color: var(--x402); }
+  .col-label.ledger { color: var(--wallet); }
+
+  .sequence-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .sequence-content {
+    position: relative;
+    min-height: 100%;
+  }
+
+  /* ── Lifelines ── */
+  .lifeline {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .lifeline-client { left: var(--col1); }
+  .lifeline-server { left: var(--col2); }
+  .lifeline-ledger { left: var(--col3); }
+
+  /* ── Empty State ── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 0;
+    color: var(--muted);
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .empty-state p { font-size: 13px; }
+  .empty-state p strong { color: var(--text); }
+
+  /* ── Event Rows ── */
+  .event-row {
+    position: relative;
+    height: 52px;
+    z-index: 1;
+    animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Arrows ── */
+  .arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    height: 2px;
+  }
+
+  .arrow.c2s {
+    left: var(--col1);
+    width: calc(var(--col2) - var(--col1));
+  }
+
+  .arrow.s2c {
+    left: var(--col1);
+    width: calc(var(--col2) - var(--col1));
+    flex-direction: row-reverse;
+  }
+
+  .arrow.s2l {
+    left: var(--col2);
+    width: calc(var(--col3) - var(--col2));
+  }
+
+  .arrow.l2s {
+    left: var(--col2);
+    width: calc(var(--col3) - var(--col2));
+    flex-direction: row-reverse;
+  }
+
+  .arrow-line {
+    flex: 1;
+    height: 2px;
+    background: var(--arrow-color);
+  }
+
+  .arrow-head {
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    flex-shrink: 0;
+  }
+
+  .arrow-head.right { border-left: 8px solid var(--arrow-color); }
+  .arrow-head.left { border-right: 8px solid var(--arrow-color); }
+
+  /* Protocol colors via CSS custom properties */
+  .arrow.ap2 { --arrow-color: var(--ap2); --arrow-bg: var(--ap2-bg); }
+  .arrow.x402 { --arrow-color: var(--x402); --arrow-bg: var(--x402-bg); }
+  .arrow.wallet { --arrow-color: var(--wallet); --arrow-bg: var(--wallet-bg); }
+  .arrow.discovery { --arrow-color: var(--discovery); --arrow-bg: var(--discovery-bg); }
+
+  .arrow-label {
+    position: absolute;
+    top: -18px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .arrow-label span {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--arrow-color);
+    background: var(--arrow-bg);
+    font-weight: 500;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Right Panel ── */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .balances {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .balances h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .balance-cards {
+    display: flex;
+    gap: 8px;
+  }
+
+  .balance-card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    transition: border-color 0.3s;
+  }
+
+  .balance-card .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .balance-card .amount {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .balance-card.user .amount { color: var(--ap2); }
+  .balance-card.merchant .amount { color: var(--x402); }
+
+  .balance-card .currency {
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: 4px;
+  }
+
+  @keyframes balancePulse {
+    0% { border-color: var(--x402); }
+    100% { border-color: var(--border); }
+  }
+
+  .balance-card.updated { animation: balancePulse 1s ease; }
+
+  .legend {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  .legend-dot.ap2 { background: var(--ap2); }
+  .legend-dot.x402 { background: var(--x402); }
+  .legend-dot.wallet { background: var(--wallet); }
+  .legend-dot.discovery { background: var(--discovery); }
+
+  /* ── Event Log ── */
+  .event-log {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .event-log-header {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    padding: 12px 16px 8px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 1;
+  }
+
+  .log-entry {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+    animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .log-entry:hover { background: var(--surface); }
+
+  .log-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .log-time {
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .log-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .log-badge.ap2 { color: var(--ap2); background: var(--ap2-bg); }
+  .log-badge.x402 { color: var(--x402); background: var(--x402-bg); }
+  .log-badge.wallet { color: var(--wallet); background: var(--wallet-bg); }
+  .log-badge.discovery { color: var(--discovery); background: var(--discovery-bg); }
+
+  .log-status {
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .log-summary {
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .log-detail {
+    display: none;
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--surface);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .log-entry.expanded .log-detail { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Payment Gateway <span>/ Live Protocol Dashboard</span></h1>
+  <div class="header-right">
+    <div class="connection-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Connecting...</span>
+    </div>
+    <button class="clear-btn" onclick="clearAll()">Clear</button>
+  </div>
+</header>
+
+<div class="main-grid">
+  <div class="sequence-panel">
+    <div class="sequence-header">
+      <div class="col-label client">Client Agent</div>
+      <div class="col-label server">Merchant Server</div>
+      <div class="col-label ledger">Ledger</div>
+    </div>
+    <div class="sequence-scroll">
+      <div class="sequence-content" id="sequenceContent">
+        <div class="lifeline lifeline-client"></div>
+        <div class="lifeline lifeline-server"></div>
+        <div class="lifeline lifeline-ledger"></div>
+        <div class="empty-state" id="emptyState">
+          <p>Waiting for protocol events...</p>
+          <p>Chat with the client agent at <strong>localhost:8000</strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="balances">
+      <h2>Wallet Balances</h2>
+      <div class="balance-cards">
+        <div class="balance-card user">
+          <div class="label">User Wallet</div>
+          <div><span class="amount" id="userBalance">100.0</span><span class="currency">credits</span></div>
+        </div>
+        <div class="balance-card merchant">
+          <div class="label">Merchant</div>
+          <div><span class="amount" id="merchantBalance">0.0</span><span class="currency">credits</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot ap2"></div> AP2</div>
+      <div class="legend-item"><div class="legend-dot x402"></div> x402</div>
+      <div class="legend-item"><div class="legend-dot wallet"></div> Wallet</div>
+      <div class="legend-item"><div class="legend-dot discovery"></div> Discovery</div>
+    </div>
+
+    <div class="event-log">
+      <div class="event-log-header">Event Log</div>
+      <div id="logEntries"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const sequenceContent = document.getElementById('sequenceContent');
+const sequenceScroll = sequenceContent.parentElement;
+const logEntries = document.getElementById('logEntries');
+const emptyState = document.getElementById('emptyState');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const userBalanceEl = document.getElementById('userBalance');
+const merchantBalanceEl = document.getElementById('merchantBalance');
+
+let eventSource = null;
+
+function connect() {
+  eventSource = new EventSource('/events');
+
+  eventSource.onopen = () => {
+    statusDot.classList.add('connected');
+    statusText.textContent = 'Connected';
+  };
+
+  eventSource.onmessage = (e) => {
+    const event = JSON.parse(e.data);
+    if (event.type === 'balance_update') {
+      updateBalances(event);
+    } else {
+      addEvent(event);
+    }
+  };
+
+  eventSource.onerror = () => {
+    statusDot.classList.remove('connected');
+    statusText.textContent = 'Reconnecting...';
+  };
+}
+
+function getArrowType(event) {
+  if (event.direction === 'internal_request') return 's2l';
+  if (event.direction === 'internal_response') return 'l2s';
+  if (event.direction === 'request') return 'c2s';
+  return 's2c';
+}
+
+function escapeHtml(str) {
+  const el = document.createElement('div');
+  el.textContent = str;
+  return el.innerHTML;
+}
+
+function addEvent(event) {
+  if (emptyState) emptyState.style.display = 'none';
+
+  const type = getArrowType(event);
+  const headDir = (type === 's2c' || type === 'l2s') ? 'left' : 'right';
+
+  const row = document.createElement('div');
+  row.className = 'event-row';
+
+  const arrow = document.createElement('div');
+  arrow.className = `arrow ${event.protocol} ${type}`;
+
+  const label = document.createElement('div');
+  label.className = 'arrow-label';
+  const labelSpan = document.createElement('span');
+  labelSpan.textContent = event.summary;
+  label.appendChild(labelSpan);
+
+  const line = document.createElement('div');
+  line.className = 'arrow-line';
+
+  const head = document.createElement('div');
+  head.className = `arrow-head ${headDir}`;
+
+  arrow.append(label, line, head);
+  row.appendChild(arrow);
+  sequenceContent.appendChild(row);
+
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.onclick = () => entry.classList.toggle('expanded');
+
+  const time = new Date(event.timestamp).toLocaleTimeString('en-US', {
+    hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3
+  });
+
+  entry.innerHTML = `
+    <div class="log-meta">
+      <span class="log-time">${escapeHtml(time)}</span>
+      <span class="log-badge ${escapeHtml(event.protocol)}">${escapeHtml(event.protocol)}</span>
+      <span class="log-badge" style="background:var(--surface);color:var(--muted)">${escapeHtml(event.method)} ${escapeHtml(event.endpoint)}</span>
+      ${event.status ? `<span class="log-status">${escapeHtml(String(event.status))}</span>` : ''}
+    </div>
+    <div class="log-summary">${escapeHtml(event.summary)}</div>
+    <div class="log-detail">${escapeHtml(JSON.stringify(event.detail, null, 2))}</div>
+  `;
+
+  logEntries.insertBefore(entry, logEntries.firstChild);
+  sequenceScroll.scrollTop = sequenceScroll.scrollHeight;
+}
+
+function updateBalances(event) {
+  const userCard = userBalanceEl.closest('.balance-card');
+  const merchantCard = merchantBalanceEl.closest('.balance-card');
+
+  if (event.user_balance !== undefined) {
+    userBalanceEl.textContent = event.user_balance.toFixed(1);
+    userCard.classList.remove('updated');
+    void userCard.offsetWidth;
+    userCard.classList.add('updated');
+  }
+  if (event.merchant_balance !== undefined) {
+    merchantBalanceEl.textContent = event.merchant_balance.toFixed(1);
+    merchantCard.classList.remove('updated');
+    void merchantCard.offsetWidth;
+    merchantCard.classList.add('updated');
+  }
+}
+
+function clearAll() {
+  sequenceContent.querySelectorAll('.event-row').forEach(r => r.remove());
+  logEntries.innerHTML = '';
+  if (emptyState) emptyState.style.display = '';
+}
+
+connect();
+</script>
+</body>
+</html>
