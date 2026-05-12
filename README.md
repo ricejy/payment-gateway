@@ -337,4 +337,10 @@ The simulated ledger can be replaced with real on-chain settlement via [Nevermin
 4. Swap `protocol/ledger.py` with `NeverminedFacilitator` calls
 5. Settlement happens on Base Sepolia testnet with real tx hashes
 
+In a real x402/AP2 implementation, three things would stop agents from spending without approval:
+
+1. Cryptographic wallet signing — Real x402 requires the payer's private key to sign the payment transaction. The agent wouldn't hold the key; a separate wallet service (or hardware wallet) would require human approval for each signature. The agent can request a payment, but it can't execute one without the user's wallet authorizing it.
+2. AP2 PaymentMandate — The AP2 spec defines a PaymentMandate as a signed authorization from the user specifying exactly how much can be spent, on what, and with which scheme. The merchant verifies this signature. The agent can't forge it because it doesn't have the user's signing key.
+3. Facilitator verification — In real x402, a third-party facilitator (like Coinbase) verifies that the payment prd and the funds actually moved on-chain. A fake or unauthofication.
+
 See the [Nevermined ADK demo](https://github.com/nevermined-io/a2a-x402/tree/main/python/examples/adk-demo) for a production reference implementation.
