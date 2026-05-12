@@ -39,7 +39,7 @@ The protocols are cleanly separated in the codebase: AP2 handles negotiation thr
 
 - **Client Agent** runs in Google ADK's Web UI (port 8000). You chat with it to browse, buy, and check balances.
 - **Merchant Server** runs as an HTTP server (port 10000) exposing three groups of endpoints: AP2 negotiation, x402 payment, and wallet state.
-- **Payment Layer** is a simulated in-memory credit ledger (user starts with 100 credits). Can be swapped with real Nevermined x402 integration for on-chain settlement.
+- **Payment Layer** is a simulated in-memory credit ledger (user starts with 100 credits). Can be swapped with real x402 integration for on-chain settlement.
 
 ## Project Structure
 
@@ -329,7 +329,7 @@ User                Client Agent              Merchant Server           Ledger
 
 ## Future: Real x402 Integration
 
-The simulated ledger can be replaced with real on-chain settlement via [Nevermined](https://nevermined.app/):
+The simulated ledger can be replaced with real on-chain settlement, for e.g., with Nevermined.
 
 1. Sign up at nevermined.app, get API keys
 2. Install `payments-py` SDK
